@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>РУНА-РУЛЕТКА</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  body {
+    font-family: 'Georgia', serif;
+    background: radial-gradient(ellipse at center, #2a1f1a 0%, #0d0805 100%);
+    color: #e8dcc8;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+    overflow-x: hidden;
+  }
+  .app { width: 100%; max-width: 480px; }
+
+  header {
+    text-align: center;
+    padding: 12px 0 20px;
+    border-bottom: 1px solid #4a3828;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: 26px;
+    letter-spacing: 6px;
+    color: #d4a548;
+    text-shadow: 0 0 20px rgba(212,165,72,.4);
+  }
+  .subtitle { font-size: 12px; color: #8a7a5c; letter-spacing: 3px; margin-top: 4px; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: rgba(40,30,20,.6);
+    border: 1px solid #4a3828;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .stat-label { color: #8a7a5c; font-size: 11px; letter-spacing: 1px; }
+  .stat-value { color: #d4a548; font-size: 18px; font-weight: bold; margin-top: 2px; }
+
+  /* Верстак */
+  .forge {
+    position: relative;
+    background: linear-gradient(180deg, #3a2a1a 0%, #1a1008 100%);
+    border: 2px solid #5a4028;
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-align: center;
+    margin-bottom: 16px;
+    box-shadow: inset 0 0 40px rgba(0,0,0,.8);
+    overflow: hidden;
+  }
+  .rune-display {
+    font-size: 90px;
+    line-height: 1;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #d4a548;
+    text-shadow: 0 0 30px currentColor;
+    transition: transform .1s;
+  }
+  .rune-display.spinning { animation: shake .1s infinite; }
+  @keyframes shake {
+    0%,100% { transform: translate(0,0) rotate(0deg); }
+    25% { transform: translate(-3px,2px) rotate(-3deg); }
+    75% { transform: translate(3px,-2px) rotate(3deg); }
+  }
+
+  .rune-name {
+    font-size: 15px;
+    color: #b8a070;
+    letter-spacing: 3px;
+    min-height: 22px;
+    margin-top: 8px;
+  }
+
+  .rarity-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    margin-top: 10px;
+    border: 1px solid currentColor;
+  }
+  .r-common   { color: #9a9a9a; }
+  .r-rare     { color: #4a9eff; }
+  .r-epic     { color: #b060ff; }
+  .r-legend   { color: #ffb020; }
+  .r-mythic   { color: #ff4060; }
+
+  /* Кнопка */
+  .btn {
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    letter-spacing: 3px;
+    font-family: inherit;
+    border: 2px solid #d4a548;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #6a4a20, #3a2510);
+    color: #f0d8a0;
+    cursor: pointer;
+    transition: all .15s;
+    text-transform: uppercase;
+    font-weight: bold;
+  }
+  .btn:hover:not(:disabled) { background: linear-gradient(180deg, #8a6030, #4a3018); box-shadow: 0 0 20px rgba(212,165,72,.4); }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.cost::after { content: " (" attr(data-cost) " 🔥)"; font-size: 13px; }
+
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+
+  /* Коллекция */
+  .section-title {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: #8a7a5c;
+    margin: 20px 0 10px;
+    border-bottom: 1px solid #3a2a1a;
+    padding-bottom: 6px;
+  }
+  .collection {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+  }
+  .slot {
+    aspect-ratio: 1;
+    background: rgba(30,20,12,.6);
+    border: 1px solid #3a2a1a;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #3a2a1a;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+  }
+  .slot.filled { color: #d4a548; border-color: #5a4028; background: rgba(60,40,20,.6); }
+  .slot.filled:hover { transform: scale(1.1); box-shadow: 0 0 15px currentColor; }
+  .slot.dupe::after {
+    content: attr(data-count);
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 10px;
+    color: #b8a070;
+  }
+
+  /* Лог */
+  .log {
+    margin-top: 16px;
+    max-height: 130px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #8a7a5c;
+    border: 1px solid #3a2a1a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: rgba(20,12,8,.6);
+  }
+  .log div { border-bottom: 1px dashed #2a1f14; padding: 2px 0; }
+  .log div:last-child { border-bottom: none; }
+
+  /* Модалка */
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal.active { display: flex; }
+  .modal-box {
+    background: linear-gradient(180deg, #2a1f14, #1a1008);
+    border: 2px solid #5a4028;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 340px;
+    width: 100%;
+    text-align: center;
+  }
+  .modal-box .big-rune { font-size: 70px; color: #d4a548; text-shadow: 0 0 30px currentColor; }
+  .modal-box h2 { font-size: 18px; letter-spacing: 3px; margin: 12px 0 8px; color: #d4a548; }
+  .modal-box p { font-size: 13px; color: #b8a070; line-height: 1.6; margin-bottom: 16px; }
+
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: #2a1f14;
+    border: 1px solid #d4a548;
+    color: #f0d8a0;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    transition: transform .3s;
+    z-index: 200;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>ᚱᚢᚾᚨ</h1>
+    <div class="subtitle">МАСТЕРСКАЯ РУНОЛОГА</div>
+  </header>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">ЭНЕРГИЯ</div>
+      <div class="stat-value" id="energy">100</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">ОТКРЫТО РУН</div>
+      <div class="stat-value" id="progress">0/24</div>
+    </div>
+  </div>
+
+  <div class="forge">
+    <div class="rune-display" id="runeDisplay">?</div>
+    <div class="rune-name" id="runeName">Нажми, чтобы высечь руну</div>
+    <div id="rarityTag"></div>
+  </div>
+
+  <button class="btn" id="carveBtn">ВЫСЕЧЬ РУНУ</button>
+
+  <div class="btn-row" style="margin-top:10px;">
+    <button class="btn" id="craftBtn" data-cost="50" style="font-size:12px;padding:12px;">СПЛАВ (50🔥)</button>
+    <button class="btn" id="ritualBtn" data-cost="30" style="font-size:12px;padding:12px;">РИТУАЛ (30🔥)</button>
+  </div>
+
+  <div class="section-title">КОЛЛЕКЦИЯ</div>
+  <div class="collection" id="collection"></div>
+
+  <div class="section-title">ХРОНИКА</div>
+  <div class="log" id="log"></div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="big-rune" id="modalRune">ᚠ</div>
+    <h2 id="modalTitle">НОВАЯ РУНА!</h2>
+    <p id="modalText"></p>
+    <button class="btn" onclick="closeModal()">ПРОДОЛЖИТЬ</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// === БАЗА РУН (Старший Футарк, 24 руны) ===
+const RUNES = [
+  {s:'ᚠ', n:'Феху',     r:'common', p:'Богатство, скот'},
+  {s:'ᚢ', n:'Уруз',     r:'common', p:'Сила, здоровье'},
+  {s:'ᚦ', n:'Турисаз',  r:'common', p:'Защита, врата'},
+  {s:'ᚨ', n:'Ансуз',    r:'common', p:'Мудрость, слово'},
+  {s:'ᚱ', n:'Райдо',    r:'common', p:'Путь, дорога'},
+  {s:'ᚲ', n:'Кано',     r:'common', p:'Огонь, ясность'},
+  {s:'ᚷ', n:'Гебо',     r:'common', p:'Дар, партнёрство'},
+  {s:'ᚹ', n:'Вуньо',    r:'common', p:'Радость, удача'},
+  {s:'ᚺ', n:'Хагалаз',  r:'rare',   p:'Разрушение, град'},
+  {s:'ᚾ', n:'Наутиз',   r:'rare',   p:'Нужда, терпение'},
+  {s:'ᛁ', n:'Иса',      r:'rare',   p:'Лёд, остановка'},
+  {s:'ᛃ', n:'Йера',     r:'rare',   p:'Урожай, цикл'},
+  {s:'ᛇ', n:'Эйваз',    r:'rare',   p:'Смерть, тис'},
+  {s:'ᛈ', n:'Перт',     r:'rare',   p:'Тайна, судьба'},
+  {s:'ᛉ', n:'Альгиз',   r:'epic',   p:'Защита, лось'},
+  {s:'ᛊ', n:'Соулу',    r:'epic',   p:'Солнце, победа'},
+  {s:'ᛏ', n:'Тиваз',    r:'epic',   p:'Справедливость'},
+  {s:'ᛒ', n:'Беркана',  r:'epic',   p:'Берёза, рост'},
+  {s:'ᛖ', n:'Эваз',     r:'epic',   p:'Движение, конь'},
+  {s:'ᛗ', n:'Манназ',   r:'legend', p:'Человек, разум'},
+  {s:'ᛚ', n:'Лагуз',    r:'legend', p:'Вода, интуиция'},
+  {s:'ᛜ', n:'Ингуз',    r:'legend', p:'Плодородие'},
+  {s:'ᛞ', n:'Дагаз',    r:'mythic', p:'Прорыв, рассвет'},
+  {s:'ᛟ', n:'Отала',    r:'mythic', p:'Наследие, дом'},
+];
+
+const RARITY_WEIGHTS = { common: 55, rare: 25, epic: 13, legend: 5, mythic: 2 };
+const RARITY_LABEL  = { common:'ОБЫЧНАЯ', rare:'РЕДКАЯ', epic:'ЭПИЧЕСКАЯ', legend:'ЛЕГЕНДАРНАЯ', mythic:'МИФИЧЕСКАЯ' };
+
+// === СОСТОЯНИЕ ===
+let state = {
+  energy: 100,
+  collection: {},   // {runeIndex: count}
+  log: []
+};
+
+// === LOCALSTORAGE ===
+function save() { localStorage.setItem('runeRoulette', JSON.stringify(state)); }
+function load() {
+  const d = localStorage.getItem('runeRoulette');
+  if (d) { try { state = JSON.parse(d); } catch(e){} }
+}
+
+// === УТИЛИТЫ ===
+function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+
+function weightedRune() {
+  const total = Object.values(RARITY_WEIGHTS).reduce((a,b)=>a+b,0);
+  let roll = Math.random()*total;
+  let pickedRarity = 'common';
+  for (const r in RARITY_WEIGHTS) {
+    roll -= RARITY_WEIGHTS[r];
+    if (roll <= 0) { pickedRarity = r; break; }
+  }
+  const pool = RUNES.map((r,i)=>({r,i})).filter(x=>x.r.r===pickedRarity);
+  return pick(pool).i;
+}
+
+function addLog(text) {
+  const time = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  state.log.unshift(`[${time}] ${text}`);
+  if (state.log.length > 30) state.log.pop();
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+// === РЕНДЕР ===
+function render() {
+  document.getElementById('energy').textContent = state.energy;
+  const opened = Object.keys(state.collection).length;
+  document.getElementById('progress').textContent = opened + '/24';
+
+  // Коллекция
+  const col = document.getElementById('collection');
+  col.innerHTML = '';
+  RUNES.forEach((rune, i) => {
+    const owned = state.collection[i];
+    const slot = document.createElement('div');
+    slot.className = 'slot' + (owned ? ' filled' : '') + (owned > 1 ? ' dupe' : '');
+    if (owned > 1) slot.dataset.count = 'x'+owned;
+    slot.textContent = owned ? rune.s : '?';
+    if (owned) {
+      slot.onclick = () => showRuneModal(i, false);
+    }
+    col.appendChild(slot);
+  });
+
+  // Лог
+  const logEl = document.getElementById('log');
+  logEl.innerHTML = state.log.map(l=>`<div>${l}</div>`).join('') || '<div>Мастерская молчит...</div>';
+
+  save();
+}
+
+// === МЕХАНИКИ ===
+function carve() {
+  if (state.energy < 10) { toast('Недостаточно энергии!'); return; }
+  state.energy -= 10;
+
+  const display = document.getElementById('runeDisplay');
+  const nameEl = document.getElementById('runeName');
+  const tagEl = document.getElementById('rarityTag');
+  const btn = document.getElementById('carveBtn');
+
+  display.classList.add('spinning');
+  nameEl.textContent = '...';
+  tagEl.innerHTML = '';
+  btn.disabled = true;
+
+  // Анимация перебора
+  let ticks = 0;
+  const spinInterval = setInterval(() => {
+    const r = pick(RUNES);
+    display.textContent = r.s;
+    nameEl.textContent = r.n;
+    ticks++;
+    if (ticks > 12) {
+      clearInterval(spinInterval);
+      finishCarve();
+    }
+  }, 70);
+
+  function finishCarve() {
+    display.classList.remove('spinning');
+    const idx = weightedRune();
+    const rune = RUNES[idx];
+    const isNew = !state.collection[idx];
+    state.collection[idx] = (state.collection[idx]||0) + 1;
+
+    display.textContent = rune.s;
+    display.style.color = getRarityColor(rune.r);
+    nameEl.textContent = rune.n;
+    tagEl.innerHTML = `<span class="rarity-tag r-${rune.r}">${RARITY_LABEL[rune.r]}</span>`;
+
+    addLog(`${isNew?'✨ НОВАЯ:':'🔁 Повтор:'} ${rune.s} ${rune.n} (${RARITY_LABEL[rune.r]})`);
+
+    if (isNew) {
+      // Бонус энергии за новую руну
+      state.energy = Math.min(100, state.energy + 5);
+      showRuneModal(idx, true);
+    } else {
+      toast(`+1 ${rune.n} (повтор)`);
+    }
+
+    btn.disabled = false;
+    render();
+  }
+}
+
+function getRarityColor(r) {
+  return { common:'#9a9a9a', rare:'#4a9eff', epic:'#b060ff', legend:'#ffb020', mythic:'#ff4060' }[r];
+}
+
+function showRuneModal(idx, isNew) {
+  const rune = RUNES[idx];
+  document.getElementById('modalRune').textContent = rune.s;
+  document.getElementById('modalRune').style.color = getRarityColor(rune.r);
+  document.getElementById('modalRune').style.textShadow = `0 0 30px ${getRarityColor(rune.r)}`;
+  document.getElementById('modalTitle').textContent = isNew ? 'НОВАЯ РУНА!' : rune.n.toUpperCase();
+  document.getElementById('modalText').innerHTML =
+    `<b style="color:${getRarityColor(rune.r)}">${RARITY_LABEL[rune.r]}</b><br><br>` +
+    `<i>«${rune.p}»</i><br><br>` +
+    `В коллекции: <b>${state.collection[idx]}</b> шт.`;
+  document.getElementById('modal').classList.add('active');
+}
+function closeModal() { document.getElementById('modal').classList.remove('active'); }
+
+// === СПЛАВ (CRAFT): 3 одинаковые → 1 случайная более редкая ===
+function craft() {
+  if (state.energy < 50) { toast('Нужно 50 энергии'); return; }
+  // Ищем руну, которой >=3
+  const candidates = Object.keys(state.collection).filter(i => state.collection[i] >= 3);
+  if (!candidates.length) { toast('Нужно 3 одинаковые руны'); return; }
+
+  // Берём самую младшую по редкости
+  candidates.sort((a,b)=>RARITY_WEIGHTS[RUNES[a].r] - RARITY_WEIGHTS[RUNES[b].r]);
+  const srcIdx = +candidates[0];
+  state.energy -= 50;
+  state.collection[srcIdx] -= 3;
+  if (state.collection[srcIdx] === 0) delete state.collection[srcIdx];
+
+  // Результат — случайная руна на 1-2 ступени выше
+  const order = ['common','rare','epic','legend','mythic'];
+  const curRarity = RUNES[srcIdx].r;
+  const curPos = order.indexOf(curRarity);
+  const targetPos = Math.min(order.length-1, curPos + 1 + (Math.random()<0.3?1:0));
+  const targetRarity = order[targetPos];
+  const pool = RUNES.map((r,i)=>({r,i})).filter(x=>x.r.r===targetRarity);
+  const got = pick(pool);
+  const rune = RUNES[got.i];
+  const isNew = !state.collection[got.i];
+  state.collection[got.i] = (state.collection[got.i]||0)+1;
+
+  addLog(`⚗️ СПЛАВ: 3×${RUNES[srcIdx].n} → ${rune.s} ${rune.n} (${RARITY_LABEL[rune.r]})`);
+  showRuneModal(got.i, isNew);
+  render();
+}
+
+// === РИТУАЛ: восстановление энергии с шансом на бонус ===
+function ritual() {
+  if (state.energy < 30) { toast('Нужно 30 энергии'); return; }
+  state.energy -= 30;
+  const roll = Math.random();
+  if (roll < 0.7) {
+    state.energy = Math.min(100, state.energy + 60);
+    addLog('🔥 Ритуал: восстановлено 60 энергии');
+    toast('+60 энергии');
+  } else if (roll < 0.95) {
+    state.energy = 100;
+    addLog('🔥 Ритуал: полное восстановление!');
+    toast('Полная энергия!');
+  } else {
+    // Джекпот: бесплатная руна
+    addLog('🌟 Ритуал удался! Духи даруют руну...');
+    toast('Духи даруют руну!');
+    setTimeout(carve, 400);
+    return;
+  }
+  render();
+}
+
+// === ВОССТАНОВЛЕНИЕ ЭНЕРГИИ (пассивно) ===
+setInterval(() => {
+  if (state.energy < 100) {
+    state.energy = Math.min(100, state.energy + 2);
+    render();
+  }
+}, 3000);
+
+// === ИНИЦИАЛИЗАЦИЯ ===
+document.getElementById('carveBtn').onclick = carve;
+document.getElementById('craftBtn').onclick = craft;
+document.getElementById('ritualBtn').onclick = ritual;
+document.getElementById('modal').onclick = (e)=>{ if(e.target.id==='modal') closeModal(); };
+
+load();
+render();
+addLog('Мастерская пробудилась...');
+</script>
+</body>
+</html>
